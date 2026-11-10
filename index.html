@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fiche de suivi pharmacothérapeutique</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#5d6773;--bd:#cfd6de;--ac:#2f6fdb;--bar:#a6c6f5;--bt:#10233f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--tx:#e8ebef;--mu:#9aa5b1;--bd:#363d46;--ac:#6b9cf0;--bar:#2b4a7d;--bt:#e8f0ff}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--tx:#e8ebef;--mu:#9aa5b1;--bd:#363d46;--ac:#6b9cf0;--bar:#2b4a7d;--bt:#e8f0ff}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:90px}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:8px 0 2px}.sub{color:var(--mu);font-size:13px;margin:0 0 12px}
+h2{background:var(--bar);color:var(--bt);font-size:15px;padding:8px 10px;border-radius:6px;margin:22px 0 10px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(max-width:520px){.g{grid-template-columns:1fr}}
+label,legend{display:block;font-size:13px;color:var(--mu);font-weight:600}
+input[type=text],input[type=date],select,textarea{width:100%;font:inherit;padding:8px;margin-top:3px;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--tx)}
+textarea{min-height:72px;resize:vertical}.w{margin-top:10px}
+fieldset{border:1px solid var(--bd);border-radius:6px;margin:10px 0 0;padding:6px 10px;background:var(--card)}
+.ck{display:flex;gap:8px;align-items:center;font-weight:400;color:var(--tx);padding:5px 0;font-size:15px}.ck input{width:20px;height:20px;flex:none}
+.sc{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;width:100%;min-width:560px;background:var(--card)}
+th,td{border:1px solid var(--bd);padding:2px;font-size:12px;text-align:left}th{padding:6px;background:var(--bg)}td input{width:100%;border:0;padding:7px;font:inherit;font-size:14px;background:transparent;color:var(--tx);margin:0}
+button{font:inherit;border:1px solid var(--ac);background:transparent;color:var(--ac);border-radius:8px;padding:9px 14px}
+button.p{background:var(--ac);color:#fff}.add{margin-top:6px;font-size:14px;padding:6px 10px}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+#bar button{flex:1;max-width:320px}#msg{text-align:center;font-size:13px;color:var(--mu);min-height:18px}
+details{margin-top:8px}summary{font-weight:600;cursor:pointer;padding:6px 0}
+</style></head><body><main>
+<h1>Pharmacotherapy Patient Care Workup Note</h1>
+<p class="sub">Remplissez la fiche, puis « Terminer » pour obtenir le PDF. Rien n’est envoyé ni enregistré : les données restent dans cette page.</p>
+<form id="f" onsubmit="return false"></form><div id="msg"></div></main>
+<div id="bar"><button id="nw">Nouveau</button><button id="opb">Ouvrir un PDF</button><input type="file" id="op" accept="application/pdf" hidden><button id="go" class="p">Terminer → PDF</button></div>
+<script>
+const Y=["Non","Oui"];
+const B=[
+['h','Informations personnelles'],
+['g',[['date','Date de l’entretien','d'],['pid','Numéro du patient'],['sexe','Sexe','s',['','Féminin','Masculin','Autre']],['age','Âge'],['gross','Grossesse','s',['','Non','Oui']],['prevue','Date prévue','d'],['allait','Allaitement','s',['','Non','Oui']],['nom','Nom'],['dob','Date de naissance','d'],['adr','Adresse'],['pharm','Pharmacie'],['tel','Téléphone'],['clin','Clinique'],['mode','Mode de vie'],['occ','Occupation'],['assur','Assurance']]],
+['h','Background'],
+['a','motif','Motif de l’entretien / Motif principal de consultation'],
+['a','hist','Histoire de la maladie'],
+['a','antm','Antécédents médicaux'],
+['h','Allergies / Effets indésirables / Alertes'],
+['a','alg','Allergies (médicament, réaction, date)'],
+['a','eiv','Effets indésirables aux médicaments dans le passé (médicament, réaction, date)'],
+['a','alr','Autres alertes (vue, ouïe, mobilité, alphabétisation, invalidité)'],
+['T','antmed','Antécédents médicamenteux',['Indication','Médication (dosage)','Dose (dose, voie, fréquence, durée)','Dates de prise','Réponse'],3],
+['h','Médication courante (liste réconciliée)'],
+['T','curmed','Médication courante',['Indication','Médication (dosage et forme)','Instructions d’utilisation','Date d’initiation','Réponse (efficacité et sécurité)','Notes sur l’adhérence'],3],
+['h','Expérience médicamenteuse du patient'],
+['a','e1','Quelle est l’attitude générale du patient vis-à-vis de la prise de médicaments ?'],
+['a','e2','Qu’est-ce que le patient désire/attend de son traitement médicamenteux ?'],
+['a','e3','Quelles sont les préoccupations du patient concernant son traitement médicamenteux ?'],
+['a','e4','À quel degré le patient comprend-il sa médication ?'],
+['a','e5','Y a-t-il des problèmes culturels, religieux ou éthiques qui influencent la volonté du patient à prendre sa médication ?'],
+['a','e6','Décrire le comportement du patient à l’égard de son traitement médicamenteux.'],
+['h','Antécédents sociaux'],
+['c','tabac','Tabac',['Non','0-1 paquet/jour','> 1 paquet/jour','Autres formes de tabac (chewing-gum, e-cigarettes)','Antécédent de tabagisme','Intéressé à quitter']],
+['c','alcool','Alcool',['Non','< 2 boissons/semaine','2-6 boissons/semaine','> 6 boissons/semaine','Antécédent de dépendance']],
+['c','caf','Caféine',['Non','< 2 tasses/jour','2-6 tasses/jour','> 6 tasses/jour']],
+['a','abus','Substance d’abus (substance et fréquence d’utilisation)'],
+['a','soc','Antécédents sociaux (notes)'],
+['g',[['vacc','Vaccination à jour (grippe, pneumocoque, etc.)','s',['','O','N','Inconnu']]]],
+['h','Revue de systèmes'],['R'],
+['h','Mesures / signes vitaux / tests labo (si pas disponible : « NA »)'],
+['g',[['poids','Poids'],['taille','Taille'],['pouls','Pouls'],['pa','Pression artérielle'],['temp','Température']]],
+['a','autres','Autres résultats pertinents'],
+['h','Évaluation : problèmes liés à la médication (PLM)'],['P'],
+['h','Le plan de soins à implémenter'],
+['g',[['pind','Indication']]],
+['a','obj','Objectifs thérapeutiques (paramètre, valeur, délai ; au moins un à court terme et un à long terme)'],
+['a','plmr','Problème(s) lié(s) à la médication'],
+['a','alt','Alternatives thérapeutiques'],
+['T','plan','Plan pharmacothérapeutique (thérapies nouvelles, continuées, modifications/arrêts)',['Indication','Médicament (dosage et forme)','Instructions d’utilisation','Notes/Changements'],3],
+['a','autint','Autres interventions pour atteindre les objectifs thérapeutiques'],
+['a','orient','Orientation (autre prestataire : diététicien, thérapie physique, etc.)'],
+['h','Programmer le suivi'],
+['g',[['sdate','Date','d'],['smode','Mode (face à face, téléphone, etc.)']]],
+['a','seval','Plan d’évaluation (ce que vous évaluerez et comment, en termes d’efficacité et de sécurité)']
+];
+const ROS=[['Générale',['Changement de poids','Fatigue','Fièvre et frisson','Faiblesse']],['Tête',['Maux de tête','Douleur de la nuque']],['Yeux',['Changement de vue','Rougeur','Vision double/trouble','Sécheresse','Larmoiement']],['Nez',['Congestion','Écoulement nasal','Démangeaisons','Épistaxis','Douleurs sinusales']],['Oreilles',['Perte d’ouïe','Bourdonnement','Mal d’oreille','Drainage']],['Gorge',['Sécheresse buccale','Mal de gorge','Enrouement','Plaies']],['Nuque',['Glandes enflées','Raideur']],['Cardiovasculaire',['Douleur thoracique','Oppression thoracique','Palpitations']],['Pulmonaire',['Difficulté respiratoire','Respiration sifflante','Toux','Toux productive']],['Gastrointestinal',['Difficulté à avaler','Brûlures d’estomac','Changement d’appétit','Nausée','Constipation','Diarrhée','Vomissement','Douleur abdominale']],['Urinaire',['Changement de fréquence','Urgence mictionnelle','Brûlure ou douleur','Hématurie']],['Musculosquelettique',['Enflement','Crampes','Douleurs musculaires ou articulaires','Raideur','Engourdissement ou fourmillement des extrémités']],['Endocrinien',['Changement d’appétit','Sudation','Soif','Intolérance au froid ou à la chaleur']],['Neuropsychiatrique',['Stress','Anxiété','Dépression','Perte de mémoire','Incapacité à se concentrer','Changement d’équilibre']],['Peau',['Rash','Démangeaison','Sécheresse']]];
+const PLM=[['Indication',[['Médication non nécessaire',['Absence d’indication','Duplication de la thérapie','Traitement non pharmacologique plus approprié','Traitement d’EI évitable','Addiction/Abus']],['Besoin d’une thérapie additionnelle',['Condition non traitée','Thérapie préventive ou prophylactique','Traitement synergique']]]],
+['Efficacité',[['Médication inefficace',['Médicament plus efficace disponible','Condition réfractaire à la médication','Forme galénique inappropriée']],['Sous-dosage',['Dose faible','Fréquence d’administration inappropriée','Interaction médicamenteuse','Durée inappropriée','Administration ou stockage inappropriés']],['Besoin de monitoring',[]]]],
+['Sécurité',[['Évènement indésirable',['Effet indésirable','Médicament dangereux pour le patient','Interaction médicamenteuse','Titration rapide de la dose','Réaction allergique','Présence de contre-indication','Administration incorrecte']],['Surdosage',['Dose élevée','Fréquence inappropriée','Durée inappropriée','Interaction médicamenteuse']],['Besoin de monitoring',[]]]],
+['Adhérence',[['Non-adhérence',['Instructions non comprises','Le patient préfère ne pas prendre','Le patient oublie de prendre','Ne peut pas avaler/administrer le médicament','Médicament non disponible']],['Coût',['Médicament trop cher','Médicament plus coût-efficace disponible']]]]];
+const F=document.getElementById('f');
+const cg=(k,t,o)=>`<fieldset><legend>${t}</legend>${o.map(x=>`<label class="ck"><input type="checkbox" data-k="${k}" value="${x}">${x}</label>`).join('')}</fieldset>`;
+const rowH=(k,n)=>'<tr>'+Array.from({length:n},()=>'<td><input type="text"></td>').join('')+'</tr>';
+function build(){let h='';
+B.forEach(b=>{const t=b[0];
+if(t=='h')h+=`<h2>${b[1]}</h2>`;
+else if(t=='g')h+='<div class="g">'+b[1].map(([k,l,ty,o])=>ty=='s'?`<label>${l}<select data-k="${k}">${o.map(x=>`<option>${x}</option>`).join('')}</select></label>`:`<label>${l}<input type="${ty=='d'?'date':'text'}" data-k="${k}"></label>`).join('')+'</div>';
+else if(t=='a')h+=`<label class="w">${b[2]}<textarea data-k="${b[1]}"></textarea></label>`;
+else if(t=='c')h+=cg(b[1],b[2],b[3]);
+else if(t=='T')h+=`<label class="w">${b[2]}</label><div class="sc"><table id="T_${b[1]}"><thead><tr>${b[3].map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rowH(b[1],b[3].length).repeat(b[4])}</tbody></table></div><button type="button" class="add" onclick="addRow('${b[1]}',${b[3].length})">+ Ligne</button>`;
+else if(t=='R')h+=ROS.map(([g,o],i)=>`<details><summary>${g}</summary>${cg('ros'+i,'Symptômes présents',o)}</details>`).join('');
+else if(t=='P'){h+=PLM.map(([c,s],i)=>`<h3 style="font-size:15px;margin:16px 0 0">${c}</h3><label class="w">Description du PLM — ${c}<textarea data-k="pd${i}"></textarea></label>`+s.map(([n,o],j)=>cg(`pc${i}_${j}`,n,o.length?o:[n])).join('')).join('');h+=`<label class="ck" style="margin-top:12px"><input type="checkbox" data-k="nop" value="Oui">Pas de PLM pour le moment</label>`}});
+F.innerHTML=h}
+function addRow(k,n){document.querySelector('#T_'+k+' tbody').insertAdjacentHTML('beforeend',rowH(k,n))}
+const q=k=>[...F.querySelectorAll(`[data-k="${k}"]`)];
+const V=k=>{const e=q(k);return e[0]&&e[0].type=='checkbox'?e.filter(x=>x.checked).map(x=>x.value):(e[0]?e[0].value.trim():'')};
+const TV=k=>[...document.querySelectorAll('#T_'+k+' tbody tr')].map(r=>[...r.querySelectorAll('input')].map(i=>i.value.trim()));
+function fresh(){build();q('date')[0].value=new Date().toISOString().slice(0,10);scrollTo(0,0)}
+nw.onclick=()=>{if(confirm('Effacer la fiche et commencer un nouveau patient ?'))fresh()};
+const msg=t=>document.getElementById('msg').textContent=t;
+function pdf(){const d=new jspdf.jsPDF({unit:'mm',format:'a4'});const M=15,W=180;let y=22;
+const need=h=>{if(y+h>284){d.addPage();y=22}};
+const bar=t=>{need(16);d.setFillColor(166,198,245);d.rect(M,y,W,7,'FD');d.setFont('helvetica','bold');d.setFontSize(10);d.text(t,M+2,y+5);y+=11};
+const kv=(l,v)=>{d.setFontSize(9);d.setFont('helvetica','bold');const a=d.splitTextToSize(l,W);d.setFont('helvetica','normal');const L=d.splitTextToSize(v||'—',W-3);need((a.length+L.length)*4+3);d.setFont('helvetica','bold');d.text(a,M,y+3);y+=a.length*4;d.setFont('helvetica','normal');d.text(L,M+2,y+3);y+=L.length*4+3};
+const cell=(x,w,l,v)=>{d.rect(x,y,w,7);d.setFontSize(9);d.setFont('helvetica','bold');d.text(l+':',x+1.5,y+4.7);const lw=d.getTextWidth(l+': ');d.setFont('helvetica','normal');d.text(d.splitTextToSize(v||'',w-lw-3)[0]||'',x+1.5+lw,y+4.7)};
+const tbl=(cols,rows)=>{const w=W/cols.length;d.setFontSize(8);const dr=(r,hd)=>{const L=r.map(c=>d.splitTextToSize(String(c||''),w-3));const h=Math.max(...L.map(l=>l.length))*3.6+3;need(h);d.setFont('helvetica',hd?'bold':'normal');L.forEach((l,i)=>{if(hd){d.setFillColor(230,230,230);d.rect(M+i*w,y,w,h,'FD')}else d.rect(M+i*w,y,w,h);d.text(l,M+i*w+1.5,y+4)});y+=h};dr(cols,1);const rr=rows.filter(r=>r.some(Boolean));rr.forEach(r=>dr(r));if(!rr.length)dr(cols.map(()=>''));y+=4};
+d.setFont('helvetica','bold');d.setFontSize(13);d.text('Pharmacotherapy Patient Care Workup Note',105,y-6,{align:'center'});y+=4;
+B.forEach(b=>{const t=b[0];
+if(t=='h')bar(b[1]);
+else if(t=='g'){const f=b[1];if(f.length==1||f[0][0]=='poids'||f[0][0]=='sdate'){f.forEach(x=>kv(x[1],V(x[0])))}else{for(let i=0;i<f.length;i+=2){need(8);cell(M,W/2,f[i][1],V(f[i][0]));if(f[i+1])cell(M+W/2,W/2,f[i+1][1],V(f[i+1][0]));y+=7}y+=4}}
+else if(t=='a')kv(b[2],V(b[1]));
+else if(t=='c')kv(b[2],V(b[1]).join(' ; '));
+else if(t=='T'){d.setFont('helvetica','bold');d.setFontSize(9);need(20);d.text(b[2],M,y+3);y+=5;tbl(b[3],TV(b[1]))}
+else if(t=='R'){let any=0;ROS.forEach(([g],i)=>{const v=V('ros'+i);if(v.length){any=1;kv(g,v.join(', '))}});if(!any)kv('Revue de systèmes','Aucun symptôme signalé')}
+else if(t=='P'){PLM.forEach(([c,s],i)=>{kv('PLM — '+c,V('pd'+i));s.forEach(([n],j)=>{const v=V(`pc${i}_${j}`);if(v.length)kv('   '+n,v.join(' ; '))})});if(V('nop').length)kv('Pas de PLM pour le moment','Oui')}});
+const n=d.getNumberOfPages();for(let i=1;i<=n;i++){d.setPage(i);d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(110);d.text('From ACCP International Certificate Program',105,10,{align:'center'});d.text(i+' / '+n,195,290,{align:'right'});d.setTextColor(0)}
+d.setProperties({title:'Workup',keywords:'WORKUPDATA:'+enc(snap())});return d}
+go.onclick=async()=>{try{const d=pdf();const nm=(V('nom')||'patient').replace(/[^\p{L}\p{N}]+/g,'_');const fn=`Workup_${nm}_${V('date')||'date'}.pdf`;
+const blob=d.output('blob');let dl=null;try{dl=typeof claude!=='undefined'?await claude.use('downloads'):null}catch(x){}
+if(dl)await dl.save({filename:fn,data:blob});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+msg('PDF prêt : '+fn)}catch(e){msg(e&&e.code=='declined'?'Téléchargement annulé.':'Erreur : '+(e.message||e))}};
+const enc=s=>btoa(unescape(encodeURIComponent(s))),dec=s=>decodeURIComponent(escape(atob(s)));
+const snap=()=>{const v={};[...new Set([...F.querySelectorAll('[data-k]')].map(e=>e.dataset.k))].forEach(k=>v[k]=V(k));const t={};B.filter(b=>b[0]=='T').forEach(b=>t[b[1]]=TV(b[1]));return JSON.stringify({v,t})};
+function load(o){fresh();Object.entries(o.v).forEach(([k,val])=>q(k).forEach(e=>{if(e.type=='checkbox')e.checked=val.includes(e.value);else e.value=val}));Object.entries(o.t).forEach(([k,rows])=>{const tb=document.querySelector('#T_'+k+' tbody');const n=tb.rows[0].cells.length;while(tb.rows.length<rows.length)addRow(k,n);rows.forEach((r,i)=>[...tb.rows[i].querySelectorAll('input')].forEach((inp,j)=>inp.value=r[j]||''))});F.querySelectorAll('details').forEach(x=>{x.open=!!x.querySelector(':checked')})}
+opb.onclick=()=>op.click();
+op.onchange=async()=>{const f=op.files[0];if(!f)return;try{const txt=new TextDecoder('latin1').decode(await f.arrayBuffer());const m=txt.match(/WORKUPDATA:([A-Za-z0-9+\/=]+)/);if(!m)msg('Ce PDF ne contient pas de données modifiables : seuls les PDF créés par cet outil peuvent être rouverts.');else{load(JSON.parse(dec(m[1])));msg('PDF chargé : modifiez, puis « Terminer » pour un nouveau PDF.')}}catch(e){msg('Lecture impossible : '+(e.message||e))}op.value=''};
+fresh();
+</script></body></html>
